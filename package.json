@@ -1,0 +1,27 @@
+{
+  "name": "kanggo-task-management",
+  "version": "1.0.0",
+  "description": "TaskFlow — Task Management System (Kanggo Technical Test)",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend",
+
+    "dev": "npm run docker:up && concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"cyan,green\" \"npm run docker:logs\" \"npm run dev:frontend\"",
+
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:local": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"cyan,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+
+    "docker:up": "docker compose up -d",
+    "docker:build": "docker compose build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f --tail=50",
+
+    "test": "npm test --prefix backend",
+    "seed": "npm run seed --prefix backend",
+    "tunnel:backend": "ngrok http 5000"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
