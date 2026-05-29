@@ -1,6 +1,6 @@
 # TaskFlow — Task Management System
 
-A full-stack Task Management System built as a technical test for PT Tenaga Kanggo Indonesia. Users can register, login, and manage their personal tasks with full CRUD operations, status filtering, and title search.
+A full-stack Task Management System built as a technical test for PT Tenaga Kanggo Indonesia. Users can register, login, and manage tasks with full CRUD, Kanban board, comments, activity timeline, and role-based access.
 
 ---
 
@@ -14,6 +14,7 @@ A full-stack Task Management System built as a technical test for PT Tenaga Kang
 | Authentication | JWT + bcrypt |
 | Styling | Tailwind CSS |
 | HTTP Client | Axios |
+| Drag & Drop | @dnd-kit/core + @dnd-kit/sortable |
 | Containerization | Docker + Docker Compose |
 
 ---
@@ -22,13 +23,20 @@ A full-stack Task Management System built as a technical test for PT Tenaga Kang
 
 - **Authentication** — Register, login, logout with JWT. Token stored in localStorage.
 - **Protected Routes** — Task pages are inaccessible without a valid token.
-- **Task CRUD** — Create, read, update, delete tasks in a modal UI.
-- **Task Ownership** — Users can only see, edit, and delete their own tasks.
-- **Status Filter** — Filter tasks by All / Pending / In Progress / Done.
-- **Title Search** — Search by keyword via query param.
-- **Overdue Detection** — Tasks past their deadline are highlighted red.
-- **Error Handling** — Friendly error messages on all failures including expired tokens.
-- **Responsive UI** — Clean grid layout that works on mobile and desktop.
+- **Role System** — `admin` creates and manages tasks; `user` views and updates tasks they own or are assigned to.
+- **Task CRUD** — Create, read, update, delete tasks with confirmation modal.
+- **Kanban Board** — Visual board with Pending / In Progress / Done columns. Drag cards to change status or reorder within a column.
+- **Status Filter** — Filter by All / Pending / In Progress / Done.
+- **Advanced Filters** — Filter by deadline (overdue, this week, no deadline) and assignment (assigned, unassigned, assigned to me).
+- **Title Search** — Search tasks by keyword.
+- **Pagination** — 9 tasks per page; page/filter/search state synced to URL query params.
+- **Task Comments** — Add, edit, delete comments on each task.
+- **Activity Timeline** — Audit log of every task action inside Task Detail view.
+- **Attachment URL** — Tasks can store an optional URL; images render as a preview thumbnail.
+- **User Profile** — Edit name and change password from the profile page.
+- **Skeleton Loading** — Skeleton UI shown on initial data fetch.
+- **Overdue Detection** — Tasks past deadline are highlighted red.
+- **Responsive UI** — Works on mobile and desktop.
 
 ---
 
@@ -40,125 +48,88 @@ A full-stack Task Management System built as a technical test for PT Tenaga Kang
 # 1. Install all dependencies (root + backend + frontend)
 npm run install:all
 
-# 2. Configure environment files
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-# Edit backend/.env — change JWT_SECRET to a random string
+# 2. Copy and configure environment
+cp .env.example .env
+# Edit .env — change JWT_SECRET to a random string
 
 # 3. Run everything with one command
 npm run dev
 ```
 
-This single `npm run dev` command will:
-- Start **MySQL 8** via Docker Compose
-- Start **Express backend** (port 5000) via Docker Compose
-- Start **React Vite frontend** (port 5173) locally
+`npm run dev` starts:
+- **MySQL 8** via Docker Compose
+- **Express backend** on port 5000 via Docker Compose
+- **Vite frontend** on port 5173 locally
 
-Open **http://localhost:5173** in your browser.
+Open **http://localhost:5173**
 
-> **Note:** Docker containers keep running after you press Ctrl+C (only frontend stops).  
-> To stop all Docker services: `npm run docker:down`
+> Docker containers keep running after Ctrl+C (only frontend stops).  
+> Stop Docker: `npm run docker:down`
 
 ---
 
 ## Available Scripts
 
-Run these from the **root** of the project:
+Run from the **project root**:
 
 | Command | Description |
 |---|---|
 | `npm run install:all` | Install dependencies for root + backend + frontend |
-| `npm run dev` | **Full dev** — Docker (MySQL + backend) + local frontend |
+| `npm run dev` | Start MySQL + backend (Docker) + frontend (local) |
 | `npm run dev:frontend` | Frontend only (Vite dev server) |
-| `npm run dev:backend` | Backend only (nodemon, needs local MySQL) |
-| `npm run dev:local` | Backend + frontend locally — no Docker (needs local MySQL) |
+| `npm run dev:local` | Backend + frontend locally — no Docker |
 | `npm run docker:up` | Start Docker Compose services in background |
-| `npm run docker:down` | Stop and remove Docker Compose services |
+| `npm run docker:down` | Stop Docker Compose services |
 | `npm run docker:build` | Rebuild Docker images |
-| `npm run docker:logs` | Follow logs from Docker services |
-| `npm run test` | Run backend tests (Jest + Supertest, no DB required) |
-| `npm run tunnel:backend` | Expose backend via ngrok (optional, see below) |
+| `npm run docker:logs` | Follow Docker service logs |
+| `npm run seed` | Populate database with demo data |
+| `npm run test` | Run backend unit tests |
 
 ---
 
-## Run with Docker (MySQL + Backend)
+## Docker Setup (MySQL + Backend)
 
-Docker Compose handles MySQL 8 and the backend API together. The backend waits for MySQL to pass its health check before starting.
-
-**Setup:**
 ```bash
-# Copy root env (for Docker Compose variable substitution)
+# Copy root env for Docker Compose
 cp .env.example .env
-# Edit .env — change JWT_SECRET at minimum
 
-# Start MySQL + backend
+# Start services
 npm run docker:up
 
-# Follow logs to verify both services started
-npm run docker:logs
-```
-
-**Verify backend is running:**
-```bash
+# Verify backend
 curl http://localhost:5000/api/health
-# {"success":true,"message":"API is running"}
-```
+# → {"success":true,"message":"API is running"}
 
-**Stop services:**
-```bash
+# Stop
 npm run docker:down
 
-# Also delete the MySQL data volume (full reset)
+# Full reset (deletes all data)
 docker compose down -v
 ```
-
-**Rebuild after backend code changes:**
-```bash
-npm run docker:build && npm run docker:up
-```
-
-> For active backend development (with hot-reload), use `npm run dev:local` instead — it runs backend via `nodemon` locally and skips Docker for the API.
 
 ---
 
 ## Run Frontend
 
-Frontend always runs locally via Vite:
-
 ```bash
-# Install and start
 npm run dev:frontend
-
-# Or from the frontend folder directly
-cd frontend && npm install && npm run dev
 ```
 
-Frontend runs on **http://localhost:5173** and proxies API calls to `http://localhost:5000/api` by default.
+Frontend proxies API calls to `http://localhost:5000/api` by default.  
+Override in `frontend/.env`:
 
-To point to a different backend, edit `frontend/.env`:
 ```env
 VITE_API_URL=http://localhost:5000/api
 ```
 
 ---
 
-## Run Everything Locally (No Docker)
+## Run Without Docker
 
-If you have MySQL installed locally and don't want Docker:
-
-**1. Import schema:**
 ```bash
 mysql -u root -p < backend/schema.sql
-```
-
-**2. Configure backend:**
-```bash
 cp backend/.env.example backend/.env
 # Edit backend/.env with your MySQL credentials
-```
-
-**3. Start backend + frontend together:**
-```bash
 npm run dev:local
 ```
 
@@ -193,8 +164,8 @@ CORS_ORIGIN=http://localhost:5173
 | `DB_USER` | Yes | — | MySQL user |
 | `DB_PASSWORD` | Yes | — | MySQL password |
 | `DB_NAME` | Yes | — | Database name |
-| `JWT_SECRET` | Yes | — | Signing secret — use a long random string |
-| `JWT_EXPIRES_IN` | No | `24h` | Token expiry (e.g. `1h`, `7d`) |
+| `JWT_SECRET` | Yes | — | Signing secret — use 32+ random chars |
+| `JWT_EXPIRES_IN` | No | `24h` | Token expiry |
 | `CORS_ORIGIN` | No | `http://localhost:5173` | Allowed frontend origin |
 
 ### Frontend (`frontend/.env`)
@@ -205,51 +176,6 @@ VITE_API_URL=http://localhost:5000/api
 
 ---
 
-## Optional: Expose Backend with ngrok
-
-ngrok lets you create a temporary public URL for your local backend — useful for demos on a different device or sharing with others.
-
-> **ngrok is not required for local development.** Skip this section if running everything locally.
-
-**1. Install ngrok:**  
-Download from [ngrok.com](https://ngrok.com/download) and follow the install instructions for your OS.
-
-**2. Authenticate (one-time):**
-```bash
-ngrok config add-authtoken YOUR_NGROK_AUTH_TOKEN
-```
-
-**3. Start tunnel:**
-```bash
-npm run tunnel:backend
-# or directly:
-ngrok http 5000
-```
-
-**4. Copy the forwarding URL** from the ngrok output, e.g.:
-```
-Forwarding  https://abc123.ngrok-free.app -> http://localhost:5000
-```
-
-**5. Update frontend env** with the ngrok URL:
-```env
-# frontend/.env
-VITE_API_URL=https://abc123.ngrok-free.app/api
-```
-
-**6. Restart frontend:**
-```bash
-npm run dev:frontend
-```
-
-**Important notes:**
-- The ngrok URL changes every time the tunnel restarts (on the free plan)
-- Update `frontend/.env` and restart frontend whenever the URL changes
-- Also update `CORS_ORIGIN` in `backend/.env` to the ngrok URL if you hit CORS errors
-- Never use ngrok tunnels in production
-
----
-
 ## Project Structure
 
 ```
@@ -257,27 +183,40 @@ kanggo-task-management/
 ├── backend/
 │   ├── src/
 │   │   ├── config/
-│   │   │   └── db.js               # MySQL connection pool
+│   │   │   └── db.js                    # MySQL connection pool
 │   │   ├── controllers/
-│   │   │   ├── authController.js   # register, login
-│   │   │   └── taskController.js   # CRUD + filter + search
+│   │   │   ├── authController.js        # register, login
+│   │   │   ├── taskController.js        # CRUD + filters + pagination
+│   │   │   ├── commentController.js     # Comment CRUD
+│   │   │   ├── activityController.js    # Activity timeline read
+│   │   │   ├── dashboardController.js   # Dashboard summary
+│   │   │   └── userController.js        # User list + profile
 │   │   ├── middleware/
-│   │   │   ├── auth.js             # JWT verify middleware
-│   │   │   ├── errorHandler.js     # 404 + global error handler
-│   │   │   └── rateLimiter.js      # express-rate-limit config
+│   │   │   ├── auth.js                  # JWT verify middleware
+│   │   │   ├── role.js                  # Role-based access middleware
+│   │   │   ├── errorHandler.js          # 404 + global error handler
+│   │   │   └── rateLimiter.js           # express-rate-limit config
 │   │   ├── routes/
 │   │   │   ├── auth.js
-│   │   │   └── tasks.js
+│   │   │   ├── tasks.js                 # Tasks + comments + activities
+│   │   │   ├── users.js                 # User list + profile
+│   │   │   └── dashboard.js
 │   │   ├── utils/
-│   │   │   └── response.js         # Consistent JSON response helpers
-│   │   └── validators/
-│   │       ├── authValidator.js    # express-validator rules
-│   │       └── taskValidator.js
+│   │   │   ├── activityHelper.js        # Non-blocking activity logger
+│   │   │   ├── durationHelper.js        # Task duration formatting
+│   │   │   ├── taskAccess.js            # Role-based task access helper
+│   │   │   └── response.js              # Consistent JSON response helpers
+│   │   ├── validators/
+│   │   │   ├── authValidator.js
+│   │   │   ├── taskValidator.js
+│   │   │   └── commentValidator.js
+│   │   └── scripts/
+│   │       └── seed.js                  # Idempotent demo data seeder
 │   ├── tests/
-│   │   └── auth.test.js            # Jest + Supertest unit tests
-│   ├── app.js                      # Express app setup
-│   ├── server.js                   # Server entry point
-│   ├── schema.sql                  # Database schema
+│   │   └── auth.test.js                 # Jest + Supertest unit tests
+│   ├── app.js
+│   ├── server.js                        # DB retry + server start
+│   ├── schema.sql                       # Database schema (fresh install)
 │   ├── Dockerfile
 │   ├── .env.example
 │   └── package.json
@@ -285,25 +224,36 @@ kanggo-task-management/
 ├── frontend/
 │   ├── src/
 │   │   ├── api/
-│   │   │   ├── axios.js            # Axios instance + interceptors
-│   │   │   ├── auth.js             # Auth API calls
-│   │   │   └── tasks.js            # Task API calls
+│   │   │   ├── axios.js                 # Axios instance + auth interceptor
+│   │   │   ├── auth.js
+│   │   │   ├── tasks.js
+│   │   │   ├── comments.js
+│   │   │   ├── activities.js
+│   │   │   └── users.js
 │   │   ├── components/
-│   │   │   ├── ConfirmModal.jsx    # Delete confirmation dialog
+│   │   │   ├── ActivityTimeline.jsx     # Task activity log
+│   │   │   ├── CommentSection.jsx       # Task comments
+│   │   │   ├── ConfirmModal.jsx
+│   │   │   ├── KanbanBoard.jsx          # Drag-and-drop board
 │   │   │   ├── Navbar.jsx
-│   │   │   ├── PrivateRoute.jsx    # Route guard
-│   │   │   ├── TaskCard.jsx        # Single task display
-│   │   │   └── TaskModal.jsx       # Create/edit task form
+│   │   │   ├── PasswordInput.jsx        # Eye toggle password field
+│   │   │   ├── PasswordStrength.jsx     # Password strength indicator
+│   │   │   ├── PrivateRoute.jsx
+│   │   │   ├── Skeleton.jsx             # Loading skeleton components
+│   │   │   ├── TaskCard.jsx
+│   │   │   ├── TaskDetailModal.jsx      # Task detail with comments + timeline
+│   │   │   └── TaskModal.jsx            # Create/edit task form
 │   │   ├── constants/
-│   │   │   └── copy.js             # All UI text — easy to translate
+│   │   │   └── copy.js
 │   │   ├── context/
-│   │   │   └── AuthContext.jsx     # Global auth state (React Context)
+│   │   │   └── AuthContext.jsx
 │   │   ├── pages/
 │   │   │   ├── LoginPage.jsx
+│   │   │   ├── ProfilePage.jsx          # Edit name + change password
 │   │   │   ├── RegisterPage.jsx
 │   │   │   └── TasksPage.jsx
-│   │   ├── App.jsx                 # Router setup
-│   │   ├── index.css               # Tailwind directives
+│   │   ├── App.jsx
+│   │   ├── index.css
 │   │   └── main.jsx
 │   ├── index.html
 │   ├── vite.config.js
@@ -311,172 +261,123 @@ kanggo-task-management/
 │   ├── .env.example
 │   └── package.json
 │
-├── package.json                    # Root scripts (run from here)
+├── package.json                         # Root scripts
 ├── docker-compose.yml
-├── .env.example                    # Docker Compose env vars
+├── .env.example
 ├── .gitignore
 └── README.md
 ```
 
 ---
 
-## Security Features
+## Database Schema
 
-| Feature | Implementation |
+```
+users          id, name, email, password, role ENUM('admin','user'), division_id, created_at, updated_at
+tasks          id, title, description, status ENUM('pending','in-progress','done'), deadline,
+               user_id (FK), assigned_to_user_id (FK), division_id, attachment_url, completed_at, created_at, updated_at
+task_activities id, task_id (FK), user_id (FK), action, field_name, old_value, new_value, created_at
+task_comments  id, task_id (FK), user_id (FK), comment, created_at, updated_at
+```
+
+---
+
+## Role System
+
+| Role | Access |
 |---|---|
-| Password hashing | `bcryptjs` with salt rounds 12 |
-| HTTP security headers | `helmet` middleware |
-| CORS | Origin restricted via `CORS_ORIGIN` env var |
-| Rate limiting | `express-rate-limit` — 20 req/15 min on auth, 200 req/15 min general |
-| Payload size limit | `express.json({ limit: '10kb' })` |
-| JWT expiration | Configurable via `JWT_EXPIRES_IN` env var |
-| SQL injection prevention | `mysql2` parameterized queries (prepared statements) |
-| Task ownership | Every task mutation checks `user_id === req.user.id` |
-| No password in response | Password hash never returned in any API response |
-| Global error handler | Stack traces never leak to client in production |
+| `admin` | Create tasks, assign to users, delete any visible task, see all tasks |
+| `user` | View/edit tasks they created or are assigned to, delete their own tasks |
+
+New registrations default to `user` role. Role is managed by an administrator.
 
 ---
 
 ## API Endpoints
 
-All task endpoints require `Authorization: Bearer <token>` header.
+All endpoints except auth require `Authorization: Bearer <token>`.
 
 ### Auth
 
-| Method | Endpoint | Description | Auth |
-|---|---|---|---|
-| POST | `/api/auth/register` | Register new user | No |
-| POST | `/api/auth/login` | Login, returns JWT | No |
-| GET | `/api/health` | Health check | No |
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/register` | Register new account |
+| POST | `/api/auth/login` | Login, returns JWT |
+| GET | `/api/health` | Health check |
 
 ### Tasks
 
-| Method | Endpoint | Description | Auth |
-|---|---|---|---|
-| GET | `/api/tasks` | List user's tasks | Yes |
-| GET | `/api/tasks?status=pending` | Filter by status | Yes |
-| GET | `/api/tasks?search=keyword` | Search by title | Yes |
-| GET | `/api/tasks?status=done&search=foo` | Combined filter + search | Yes |
-| POST | `/api/tasks` | Create task | Yes |
-| PUT | `/api/tasks/:id` | Update task | Yes |
-| DELETE | `/api/tasks/:id` | Delete task | Yes |
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/tasks` | List tasks (paginated when `?page=` provided) |
+| GET | `/api/tasks?status=pending` | Filter by status |
+| GET | `/api/tasks?search=keyword` | Search by title |
+| GET | `/api/tasks?page=1&limit=9` | Paginated list |
+| GET | `/api/tasks?deadline=overdue` | Filter by deadline |
+| GET | `/api/tasks?assigned=me` | Filter by assignment |
+| POST | `/api/tasks` | Create task (admin only) |
+| PUT | `/api/tasks/:id` | Update task |
+| DELETE | `/api/tasks/:id` | Delete task |
+
+**Pagination response:**
+```json
+{
+  "success": true,
+  "data": {
+    "tasks": [...],
+    "pagination": { "page": 1, "limit": 9, "total": 20, "totalPages": 3 }
+  }
+}
+```
+
+### Comments
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/tasks/:id/comments` | List comments for a task |
+| POST | `/api/tasks/:id/comments` | Add comment |
+| PUT | `/api/tasks/:id/comments/:cid` | Edit own comment |
+| DELETE | `/api/tasks/:id/comments/:cid` | Delete own comment (or admin) |
+
+### Activity Timeline
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/tasks/:id/activities` | Get activity log for a task |
+
+Actions logged: `task_created`, `task_updated`, `status_changed`, `task_assigned`, `task_completed`, `comment_added`
+
+### Users
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/users` | List all users with role=user (for assignee dropdown) |
+| GET | `/api/users/me` | Get current user profile |
+| PUT | `/api/users/me` | Update name |
+| PUT | `/api/users/me/password` | Change password |
 
 ---
 
-## API Examples
+## API Response Format
 
-### POST /api/auth/register
-
-**Request:**
+**Success:**
 ```json
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "password123"
-}
+{ "success": true, "message": "...", "data": { ... } }
 ```
 
-**Response 201:**
+**Error:**
 ```json
-{
-  "success": true,
-  "message": "Registration successful",
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIs...",
-    "user": { "id": 1, "name": "John Doe", "email": "john@example.com" }
-  }
-}
+{ "success": false, "message": "...", "errors": [{ "field": "title", "message": "..." }] }
 ```
 
-### POST /api/auth/login
-
-**Request:**
-```json
-{
-  "email": "john@example.com",
-  "password": "password123"
-}
-```
-
-**Response 200:**
-```json
-{
-  "success": true,
-  "message": "Login successful",
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIs...",
-    "user": { "id": 1, "name": "John Doe", "email": "john@example.com" }
-  }
-}
-```
-
-### GET /api/tasks
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Response 200:**
-```json
-{
-  "success": true,
-  "message": "Tasks retrieved successfully",
-  "data": [
-    {
-      "id": 1,
-      "title": "Fix login bug",
-      "description": "Token refresh not working",
-      "status": "in-progress",
-      "deadline": "2026-06-01",
-      "created_at": "2026-05-29T10:00:00.000Z",
-      "updated_at": "2026-05-29T10:00:00.000Z"
-    }
-  ]
-}
-```
-
-### POST /api/tasks
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Request:**
-```json
-{
-  "title": "Write unit tests",
-  "description": "Cover auth endpoints",
-  "status": "pending",
-  "deadline": "2026-06-10"
-}
-```
-
-**Response 201:**
-```json
-{
-  "success": true,
-  "message": "Task created successfully",
-  "data": { "id": 2, "title": "Write unit tests", "status": "pending", "deadline": "2026-06-10", "..." : "..." }
-}
-```
-
-### Error Response Format
-
-```json
-{
-  "success": false,
-  "message": "Task title is required",
-  "errors": [
-    { "field": "title", "message": "Task title is required" }
-  ]
-}
-```
-
-**Common HTTP status codes:**
+**Common status codes:**
 
 | Code | Meaning |
 |---|---|
-| 200 | Success |
+| 200 | OK |
 | 201 | Created |
-| 400 | Bad request |
-| 401 | Unauthenticated |
-| 403 | Forbidden (wrong owner) |
+| 401 | Unauthorized (missing/invalid token) |
+| 403 | Forbidden (wrong role or ownership) |
 | 404 | Not found |
 | 409 | Conflict (e.g. email taken) |
 | 422 | Validation error |
@@ -485,81 +386,29 @@ All task endpoints require `Authorization: Bearer <token>` header.
 
 ---
 
-## New Features (v2)
+## Security
 
-### Activity Timeline / Audit Trail
-Every task action is logged to `task_activities`: `task_created`, `task_updated`, `status_changed`, `task_assigned`, `comment_added`, `task_completed`, `task_reopened`. Viewable inside **Task Detail** → *Activity Timeline* section.
-
-- `GET /api/tasks/:id/activities` — returns ordered timeline for a task
-- Access: super_admin sees all; admin sees division tasks; user sees own/assigned tasks
-
-### Ticket Comments
-Full comment CRUD on each task. `POST /api/tasks/:id/comments` also logs an activity and triggers a notification to related users.
-
-- `GET /api/tasks/:id/comments`
-- `POST /api/tasks/:id/comments`
-- `PUT /api/tasks/:id/comments/:commentId` — owner only
-- `DELETE /api/tasks/:id/comments/:commentId` — owner or super_admin
-
-### User Notifications
-Bell icon in navbar with unread badge (polls every 60s). Dropdown shows last 50 notifications. Events: `task_assigned`, `comment_added`, `status_changed`, `task_completed`, `task_reopened`. Actor is never notified about their own action.
-
-- `GET /api/notifications` — list (max 50, newest first)
-- `GET /api/notifications/unread-count` — badge count
-- `PUT /api/notifications/:id/read` — mark one read
-- `PUT /api/notifications/read-all` — mark all read
-
-### Dashboard Analytics
-Summary cards displayed at the top of the Tasks page. Data is role-scoped.
-
-- super_admin: total tasks by status + overdue + total users + total divisions
-- admin: division tasks by status + assigned to me
-- user: created by me + assigned to me + by status
-
-`GET /api/dashboard/summary`
-
-### Kanban Board
-Toggle between **List** and **Board** view in the Tasks page header. Board shows 3 columns (Pending / In Progress / Done). Drag a card between columns to update status. On failure the UI reverts and shows an error toast. Built with `@dnd-kit/core`.
-
-### Attachment URL Support
-Tasks can store an optional `attachment_url`. Validated as a valid URL on backend and frontend. In Task Detail modal:
-- If URL is an image (`.jpg`, `.jpeg`, `.png`, `.webp`), a preview thumbnail is shown
-- **Open Attachment** link opens the URL in a new tab
-
-### Completion Duration
-- `completed_at` is set automatically when status changes to `done`; cleared when reopened
-- Response includes `completion_duration_label` ("Completed in 2 hours 15 minutes")
-- Response includes `open_duration_label` ("Open for 3 days 4 hours") when not done
-
-### Role-Based Task Visibility
-`GET /api/tasks` now respects roles:
-- `super_admin`: sees all tasks
-- `admin`: sees all tasks in their division
-- `user`: sees tasks they created **or** are assigned to
-
-### New Endpoint: GET /api/users
-Returns users visible to the caller (for assignee dropdown in task form):
-- super_admin: all users
-- admin: users in their division
-- user: only themselves
+| Feature | Implementation |
+|---|---|
+| Password hashing | `bcryptjs` salt rounds 12 |
+| HTTP headers | `helmet` middleware |
+| CORS | Restricted via `CORS_ORIGIN` env var |
+| Rate limiting | 20 req/15 min (auth), 200 req/15 min (general) |
+| Payload size | `express.json({ limit: '10kb' })` |
+| JWT expiry | Configurable via `JWT_EXPIRES_IN` |
+| SQL injection | `mysql2` parameterized queries |
+| Password in response | Never returned in any API response |
+| Error leakage | Stack traces never sent in production |
 
 ---
 
 ## Demo Data
 
-The project includes a seed script that populates the database with demo divisions, users, and tasks so reviewers can test all features immediately without creating data manually.
-
-### Run Seed
-
 ```bash
-# From root
 npm run seed
-
-# Or from backend folder
-cd backend && npm run seed
 ```
 
-The seed is **idempotent** — safe to run multiple times. It skips records that already exist.
+The seed is **idempotent** — safe to run multiple times.
 
 ### Demo Credentials
 
@@ -569,131 +418,109 @@ The seed is **idempotent** — safe to run multiple times. It skips records that
 | User | `user@taskflow.test` | `password123` |
 | User | *(your registered account)* | *(your password)* |
 
-### Seeded Data Summary
+### Seeded Data
 
-- **2 Seed Users** — 1 admin, 1 user
-- **4 Tasks** — all created by admin, assigned to passyah11
+- 2 users: 1 admin, 1 user
+- 20 tasks across pending / in-progress / done statuses (all created by admin, assigned to user)
 
-### Reset Demo Data
-
-To fully reset the database and re-seed:
+### Reset
 
 ```bash
-# Stop and remove Docker volumes (deletes all data)
-docker compose down -v
-
-# Restart fresh
-npm run dev
-
-# Wait for backend to be healthy, then seed
+docker compose down -v && docker compose up -d
 npm run seed
 ```
-
-> ⚠️ `docker compose down -v` deletes all data permanently. Only use in local development.
 
 ---
 
 ## Running Tests
 
 ```bash
-# From root
 npm run test
-
-# Or from backend folder
-cd backend && npm test
 ```
 
-Tests use Jest + Supertest with a mocked DB — no real MySQL needed.
+Tests use Jest + Supertest with a mocked database — no real MySQL needed.
 
-**Test coverage:**
-- Register validation (missing name, invalid email, short password)
-- Login validation (missing email, invalid credentials)
-- Protected route returns 401 without token
-- Protected route returns 401 with malformed token
+**Coverage:**
+- Register: missing name, invalid email, short password
+- Login: missing email, wrong credentials
+- Protected route: 401 without token, 401 with malformed token
 
 ---
 
 ## Manual Testing Checklist
 
-**Authentication**
-- [ ] Register with valid data → redirected to task list
-- [ ] Register with duplicate email → error message shown
-- [ ] Register with short password → validation error shown
-- [ ] Login with correct credentials → redirected to task list
-- [ ] Login with wrong password → error message shown
-- [ ] Access `/tasks` without login → redirected to login page
-- [ ] Click Logout → token cleared, redirected to login
+**Auth**
+- [ ] Register with valid data → redirected to tasks
+- [ ] Register with duplicate email → error shown
+- [ ] Register with weak password → validation error
+- [ ] Login → redirected to tasks
+- [ ] Login with wrong password → error shown
+- [ ] Access `/tasks` without login → redirected to login
+- [ ] Logout → token cleared, redirected to login
 
 **Task CRUD**
-- [ ] Create task with only title → success toast, task appears
-- [ ] Create task with all fields → success toast, task appears
-- [ ] Create task with empty title → validation error shown
-- [ ] Edit task title → success toast, title updated
-- [ ] Edit task status to Done → status badge updates
-- [ ] Delete task → confirmation dialog appears
-- [ ] Confirm delete → task removed, success toast
+- [ ] Admin: create task, assign to user → appears in board
+- [ ] Edit task title, description, status, deadline
+- [ ] Drag card to different column → status updates
+- [ ] Delete task → confirmation dialog → removed
+- [ ] User: cannot see "+ Add Task" button
+- [ ] User: can delete tasks assigned to them
 
 **Filter & Search**
-- [ ] Click "Pending" filter → only pending tasks shown
-- [ ] Click "In Progress" filter → only in-progress tasks shown
-- [ ] Click "Done" filter → only done tasks shown
-- [ ] Click "All" filter → all tasks shown
-- [ ] Search by partial title → matching tasks shown
-- [ ] Clear search → all tasks shown again
-- [ ] Combine filter + search → both applied correctly
+- [ ] Status filter (Pending / In Progress / Done / All)
+- [ ] Deadline filter (Overdue / This Week / No Deadline)
+- [ ] Assignment filter (Has Assignee / Unassigned / Assigned to Me)
+- [ ] Search by title keyword
+- [ ] Combine filters → all applied
+- [ ] URL reflects filter state (shareable link)
 
-**Security**
-- [ ] User A cannot see User B's tasks
-- [ ] PUT `/api/tasks/:id` with User A's token on User B's task → 403
-- [ ] DELETE `/api/tasks/:id` with wrong user → 403
+**Pagination**
+- [ ] Navigate pages with Prev/Next
+- [ ] Page numbers clickable
+- [ ] Count shows "1–9 of 20"
+
+**Comments & Timeline**
+- [ ] View task → Comments section + Activity Timeline visible
+- [ ] Add comment → appears immediately
+- [ ] Edit own comment → updates inline
+- [ ] Delete own comment → removed
+- [ ] Activity shows task_created, status_changed, task_assigned, task_completed
+
+**Profile**
+- [ ] Click profile icon in navbar → /profile
+- [ ] Name field pre-filled and editable
+- [ ] Email field shown but disabled
+- [ ] Role shown but disabled
+- [ ] Change password with strength indicator
+- [ ] Confirm password mismatch → inline error
 
 ---
 
 ## Screenshots
 
-> Screenshots will be added after the app is running locally.
-
 | Page | Screenshot |
 |---|---|
-| Login | _(coming soon)_ |
-| Register | _(coming soon)_ |
-| Task List | _(coming soon)_ |
-| Add Task Modal | _(coming soon)_ |
-| Edit Task Modal | _(coming soon)_ |
-| Delete Confirmation | _(coming soon)_ |
+| Login | _(add screenshot)_ |
+| Register | _(add screenshot)_ |
+| Kanban Board | _(add screenshot)_ |
+| Task Detail (with comments + timeline) | _(add screenshot)_ |
+| Profile Page | _(add screenshot)_ |
 
 ---
 
 ## Video Demo
 
-> [Video demo link will be added here]
+> [Video demo link — add after recording]
 
 Duration: ≤ 15 minutes  
-Covers: Register → Login → Create tasks → Filter → Search → Edit → Delete → Logout
-
----
-
-## Future Improvements
-
-Features intentionally left out of scope but planned for production:
-
-- **Refresh Token** — Token rotation to improve security without forcing re-logins.
-- **Role-Based Access Control** — Admin role for user management.
-- **Admin Dashboard** — Overview metrics (tasks by status, user count, etc.).
-- **Admin Approval Flow** — New accounts require admin approval.
-- **Audit Log** — Track who created/modified/deleted what and when.
-- **Multilingual UI** — `src/constants/copy.js` is already structured to support i18n.
-- **Pagination** — `page` + `limit` query params for large task lists.
-- **Email Notifications** — Deadline reminders via email.
-- **Deployment** — CI/CD to Render (backend) + Vercel (frontend).
+Covers: Register → Login → Create task → Assign → Kanban drag → Filter → Search → Comments → Profile → Logout
 
 ---
 
 ## Security Notes
 
-- Never commit `.env` files — only `.env.example` is committed.
+- Never commit `.env` — only `.env.example` is in the repository.
 - Change `JWT_SECRET` to a cryptographically random string (32+ chars) in production.
-- `CORS_ORIGIN` restricts which frontend origins can call the API — update it when using ngrok.
-- Rate limiting defaults are lenient for development — tighten in production.
-- Set `NODE_ENV=production` in production to prevent stack traces leaking in API responses.
-- MySQL credentials in `docker-compose.yml` defaults are for local development only.
+- `CORS_ORIGIN` restricts allowed frontend origins — update when using ngrok or deploying.
+- Rate limiting defaults are lenient for local development.
+- Set `NODE_ENV=production` to suppress stack traces in API error responses.
