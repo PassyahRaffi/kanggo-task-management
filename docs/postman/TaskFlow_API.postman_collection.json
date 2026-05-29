@@ -1,0 +1,419 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "TaskFlow API",
+    "description": "TaskFlow Task Management System API — Kanggo Technical Test.\n\n**Quick Start:**\n1. Run **Login** request first — token is saved automatically to `{{token}}`\n2. All protected endpoints will use `Bearer {{token}}` automatically\n3. After creating a task, copy the `id` from the response and set `task_id` variable\n\n**Demo credentials:**\n- Admin: `admin@taskflow.test` / `password123`\n- User: `user@taskflow.test` / `password123`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",    "value": "http://localhost:5000", "type": "string" },
+    { "key": "token",       "value": "",                       "type": "string" },
+    { "key": "task_id",     "value": "1",                      "type": "string" },
+    { "key": "comment_id",  "value": "1",                      "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "GET /api/health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/health", "host": ["{{base_url}}"], "path": ["api","health"] },
+            "description": "Check if the backend API is running."
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/auth/register", "host": ["{{base_url}}"], "path": ["api","auth","register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo User\",\n  \"email\": \"demo.user@taskflow.test\",\n  \"password\": \"Password@123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Register a new account. Newly registered accounts are assigned `user` role by default.\n\nPassword rules: min 8 chars, uppercase, lowercase, number, special character."
+          },
+          "response": []
+        },
+        {
+          "name": "Login (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const res = pm.response.json();",
+                  "  if (res.success && res.data && res.data.token) {",
+                  "    pm.collectionVariables.set('token', res.data.token);",
+                  "    console.log('Token saved:', res.data.token.substring(0, 20) + '...');",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api","auth","login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@taskflow.test\",\n  \"password\": \"password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Login as admin. Token is automatically saved to `{{token}}` collection variable via the Tests script."
+          },
+          "response": []
+        },
+        {
+          "name": "Login (User)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const res = pm.response.json();",
+                  "  if (res.success && res.data && res.data.token) {",
+                  "    pm.collectionVariables.set('token', res.data.token);",
+                  "    console.log('Token saved:', res.data.token.substring(0, 20) + '...');",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api","auth","login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@taskflow.test\",\n  \"password\": \"password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Login as regular user. Token is automatically saved to `{{token}}`."
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "GET All Tasks",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/tasks", "host": ["{{base_url}}"], "path": ["api","tasks"] },
+            "description": "Get all tasks visible to the logged-in user. Role-scoped: admin sees all tasks; user sees tasks they created or are assigned to."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Tasks — Filter by Status (pending)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/tasks?status=pending",
+              "host": ["{{base_url}}"],
+              "path": ["api","tasks"],
+              "query": [{ "key": "status", "value": "pending" }]
+            },
+            "description": "Filter tasks by status. Values: `pending`, `in-progress`, `done`."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Tasks — Search by Title",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/tasks?search=authentication",
+              "host": ["{{base_url}}"],
+              "path": ["api","tasks"],
+              "query": [{ "key": "search", "value": "authentication" }]
+            },
+            "description": "Search tasks by title keyword (partial match)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Tasks — Paginated",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/tasks?page=1&limit=9",
+              "host": ["{{base_url}}"],
+              "path": ["api","tasks"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "9" }
+              ]
+            },
+            "description": "Get paginated tasks. Response includes `pagination` object with `page`, `limit`, `total`, `totalPages`."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Tasks — Filter Overdue",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/tasks?deadline=overdue",
+              "host": ["{{base_url}}"],
+              "path": ["api","tasks"],
+              "query": [{ "key": "deadline", "value": "overdue" }]
+            },
+            "description": "Filter tasks with deadline passed and status not `done`. Also supports `this_week` and `no_deadline`."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Tasks — Assigned to Me",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/tasks?assigned=me",
+              "host": ["{{base_url}}"],
+              "path": ["api","tasks"],
+              "query": [{ "key": "assigned", "value": "me" }]
+            },
+            "description": "Show only tasks assigned to the current user. Also supports `assigned` (has assignee) and `unassigned`."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Create Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const res = pm.response.json();",
+                  "  if (res.success && res.data && res.data.id) {",
+                  "    pm.collectionVariables.set('task_id', res.data.id);",
+                  "    console.log('task_id saved:', res.data.id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/tasks", "host": ["{{base_url}}"], "path": ["api","tasks"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Test task from Postman\",\n  \"description\": \"This task was created from Postman collection.\",\n  \"status\": \"pending\",\n  \"deadline\": \"2026-12-31\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Create a new task. **Admin only.** `task_id` is automatically saved to collection variable after creation.\n\nOptional fields: `description`, `deadline`, `assigned_to_user_id`, `attachment_url`."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Update Task",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/tasks/{{task_id}}", "host": ["{{base_url}}"], "path": ["api","tasks","{{task_id}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated task title\",\n  \"status\": \"in-progress\",\n  \"deadline\": \"2026-12-31\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Update a task. Only send fields you want to change. Setting `status` to `done` automatically records `completed_at`."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE Task",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/api/tasks/{{task_id}}", "host": ["{{base_url}}"], "path": ["api","tasks","{{task_id}}"] },
+            "description": "Delete a task. Admin can delete any task. User can delete tasks they created or are assigned to."
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "Comments",
+      "item": [
+        {
+          "name": "GET Comments for Task",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/tasks/{{task_id}}/comments", "host": ["{{base_url}}"], "path": ["api","tasks","{{task_id}}","comments"] },
+            "description": "Get all comments for a specific task."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Add Comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const res = pm.response.json();",
+                  "  if (res.success && res.data && res.data.id) {",
+                  "    pm.collectionVariables.set('comment_id', res.data.id);",
+                  "    console.log('comment_id saved:', res.data.id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/tasks/{{task_id}}/comments", "host": ["{{base_url}}"], "path": ["api","tasks","{{task_id}}","comments"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"This is a test comment from Postman.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Add a comment to a task. `comment_id` is automatically saved."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Edit Comment",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/tasks/{{task_id}}/comments/{{comment_id}}", "host": ["{{base_url}}"], "path": ["api","tasks","{{task_id}}","comments","{{comment_id}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Updated comment text.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Edit a comment. Only the comment owner can edit."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE Comment",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/api/tasks/{{task_id}}/comments/{{comment_id}}", "host": ["{{base_url}}"], "path": ["api","tasks","{{task_id}}","comments","{{comment_id}}"] },
+            "description": "Delete a comment. Owner or admin can delete."
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "Activity Timeline",
+      "item": [
+        {
+          "name": "GET Task Activities",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/tasks/{{task_id}}/activities", "host": ["{{base_url}}"], "path": ["api","tasks","{{task_id}}","activities"] },
+            "description": "Get activity timeline for a task. Actions: `task_created`, `task_updated`, `status_changed`, `task_assigned`, `task_completed`, `comment_added`."
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "GET Users (assignee list)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/users", "host": ["{{base_url}}"], "path": ["api","users"] },
+            "description": "Get list of users with role `user`. Used to populate the Assign To dropdown when creating/editing tasks."
+          },
+          "response": []
+        },
+        {
+          "name": "GET My Profile",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/users/me", "host": ["{{base_url}}"], "path": ["api","users","me"] },
+            "description": "Get the currently logged-in user's profile (id, name, email, role)."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Update Profile",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/users/me", "host": ["{{base_url}}"], "path": ["api","users","me"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Update the current user's name."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Change Password",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/users/me/password", "host": ["{{base_url}}"], "path": ["api","users","me","password"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"password123\",\n  \"new_password\": \"NewPassword@123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Change password. `current_password` is optional — if provided, it will be verified before updating.\n\nNew password rules: min 8 chars, uppercase, lowercase, number, special character."
+          },
+          "response": []
+        }
+      ]
+    }
+
+  ]
+}

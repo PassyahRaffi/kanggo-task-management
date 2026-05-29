@@ -293,6 +293,34 @@ New registrations default to `user` role. Role is managed by an administrator.
 
 ---
 
+## Postman Collection
+
+A ready-to-import Postman Collection is included in the repository.
+
+**File:** `docs/postman/TaskFlow_API.postman_collection.json`
+
+**How to import:**
+1. Open Postman → click **Import**
+2. Select the file `docs/postman/TaskFlow_API.postman_collection.json`
+3. The collection appears with all folders and variables pre-configured
+
+**How to use:**
+1. Run **Login (Admin)** or **Login (User)** request first
+2. The token is **automatically saved** to `{{token}}` variable via the Tests script
+3. All protected endpoints use `Bearer {{token}}` — no manual copy-paste needed
+4. After `POST Create Task`, the `task_id` is also saved automatically
+
+**Collection Variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `base_url` | `http://localhost:5000` | Backend URL |
+| `token` | _(auto-filled on login)_ | JWT token |
+| `task_id` | _(auto-filled on create)_ | Task ID for update/delete |
+| `comment_id` | _(auto-filled on add comment)_ | Comment ID |
+
+---
+
 ## API Endpoints
 
 All endpoints except auth require `Authorization: Bearer <token>`.
