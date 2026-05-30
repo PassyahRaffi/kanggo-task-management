@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "name": "TaskFlow API",
-    "description": "TaskFlow Task Management System API — Kanggo Technical Test.\n\n**Quick Start:**\n1. Run **Login** request first — token is saved automatically to `{{token}}`\n2. All protected endpoints will use `Bearer {{token}}` automatically\n3. After creating a task, copy the `id` from the response and set `task_id` variable\n\n**Demo credentials:**\n- Admin: `admin@taskflow.test` / `password123`\n- User: `user@taskflow.test` / `password123`",
+    "description": "TaskFlow Task Management System API — Kanggo Technical Test.\n\n**Quick Start:**\n1. Run **Login** request first — token is saved automatically to `{{token}}`\n2. All protected endpoints will use `Bearer {{token}}` automatically\n3. After creating a task, copy the `id` from the response and set `task_id` variable\n\n**Demo credentials:**\n- Admin: `admin@taskflow.test` / `password123`\n- User: `lorem@taskflow.test` / `password123`\n- User: `ipsum@taskflow.test` / `password123`",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -103,7 +103,7 @@
             "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api","auth","login"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"user@taskflow.test\",\n  \"password\": \"password123\"\n}",
+              "raw": "{\n  \"email\": \"lorem@taskflow.test\",\n  \"password\": \"password123\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "description": "Login as regular user. Token is automatically saved to `{{token}}`."

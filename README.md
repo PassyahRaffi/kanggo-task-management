@@ -443,13 +443,14 @@ The seed is **idempotent** — safe to run multiple times.
 | Role | Email | Password |
 |---|---|---|
 | Admin | `admin@taskflow.test` | `password123` |
-| User | `user@taskflow.test` | `password123` |
+| User | `lorem@taskflow.test` | `password123` |
+| User | `ipsum@taskflow.test` | `password123` |
 | User | *(your registered account)* | *(your password)* |
 
 ### Seeded Data
 
-- 2 users: 1 admin, 1 user
-- 20 tasks across pending / in-progress / done statuses (all created by admin, assigned to user)
+- 3 users: 1 admin, 2 users (lorem + ipsum)
+- 35 tasks across pending / in-progress / done statuses (created by admin, distributed between lorem and ipsum)
 
 ### Reset
 

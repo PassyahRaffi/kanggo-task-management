@@ -36,6 +36,7 @@ async function seed() {
     const obsoleteEmails = [
       'superadmin@taskflow.test',
       'passyah11@gmail.com',
+      'user@taskflow.test',
       'admin.engineering@taskflow.test',
       'user.engineering@taskflow.test',
       'admin.operations@taskflow.test',
@@ -52,8 +53,9 @@ async function seed() {
     const pwd = await bcrypt.hash('password123', 12);
 
     const seedUsers = [
-      { name: 'admin',     email: 'admin@taskflow.test', role: 'admin' },
-      { name: 'user',      email: 'user@taskflow.test', role: 'user'  },
+      { name: 'admin',  email: 'admin@taskflow.test',  role: 'admin' },
+      { name: 'lorem',  email: 'lorem@taskflow.test',  role: 'user'  },
+      { name: 'ipsum',  email: 'ipsum@taskflow.test',  role: 'user'  },
     ];
 
     for (const u of seedUsers) {
@@ -64,38 +66,63 @@ async function seed() {
       );
     }
 
+    // Remove old user account if it exists
+    await conn.execute("DELETE FROM users WHERE email = 'user@taskflow.test'");
+
     const [uRows] = await conn.execute(
-      "SELECT id, email FROM users WHERE email IN ('admin@taskflow.test', 'user@taskflow.test')"
+      "SELECT id, email FROM users WHERE email IN ('admin@taskflow.test', 'lorem@taskflow.test', 'ipsum@taskflow.test')"
     );
     const uMap = Object.fromEntries(uRows.map((u) => [u.email, u.id]));
 
-    const adminId          = uMap['admin@taskflow.test'];
-    const registeredUserId = uMap['user@taskflow.test'] || null;
+    const adminId  = uMap['admin@taskflow.test'];
+    const loremId  = uMap['lorem@taskflow.test'];
+    const ipsumId  = uMap['ipsum@taskflow.test'];
 
     console.log('✓ Users');
 
     // ── 2. TASKS ──────────────────────────────────────────────────────
     const TASKS = [
-      { title: 'Setup authentication middleware',    desc: 'Implement JWT middleware and protect task routes.',                        status: 'pending',     dl: '2026-06-15', owner: adminId, assignee: registeredUserId },
-      { title: 'Fix task filter by status',          desc: 'Ensure status filter works for pending, in-progress, and done.',           status: 'pending',     dl: '2026-06-18', owner: adminId, assignee: registeredUserId },
-      { title: 'Improve frontend error message',     desc: 'Make frontend error messages easier to understand.',                       status: 'in-progress', dl: '2026-06-20', owner: adminId, assignee: registeredUserId },
-      { title: 'Complete README API documentation',  desc: 'Document all API endpoints, env variables, and local setup steps.',        status: 'done',        dl: '2026-05-30', owner: adminId, assignee: registeredUserId },
-      { title: 'Implement task pagination',          desc: 'Add page-based pagination to the task list endpoint.',                     status: 'done',        dl: '2026-05-28', owner: adminId, assignee: registeredUserId },
-      { title: 'Add title search feature',           desc: 'Allow users to search tasks by keyword from the task list page.',          status: 'done',        dl: '2026-05-27', owner: adminId, assignee: registeredUserId },
-      { title: 'Write unit tests for auth',          desc: 'Cover register and login endpoints with Jest and Supertest.',              status: 'done',        dl: '2026-05-25', owner: adminId, assignee: registeredUserId },
-      { title: 'Optimize database queries',          desc: 'Add indexes and review slow queries in task list.',                        status: 'in-progress', dl: '2026-06-10', owner: adminId, assignee: registeredUserId },
-      { title: 'Fix mobile responsive layout',       desc: 'Fix card grid breaking on screens below 375px.',                          status: 'in-progress', dl: '2026-06-12', owner: adminId, assignee: registeredUserId },
-      { title: 'Add loading skeleton to task list',  desc: 'Replace plain loading text with skeleton card components.',                status: 'pending',     dl: '2026-06-22', owner: adminId, assignee: registeredUserId },
-      { title: 'Review and merge open PRs',          desc: 'Review three open pull requests and merge after approval.',               status: 'pending',     dl: '2026-06-17', owner: adminId, assignee: registeredUserId },
-      { title: 'Update npm dependencies',            desc: 'Run npm audit and update outdated packages to latest minor versions.',     status: 'pending',     dl: '2026-06-25', owner: adminId, assignee: registeredUserId },
-      { title: 'Setup CI/CD pipeline',               desc: 'Configure GitHub Actions to run tests on every push to main.',            status: 'pending',     dl: '2026-06-28', owner: adminId, assignee: registeredUserId },
-      { title: 'Security audit and input sanitize',  desc: 'Review all endpoints for injection risks and missing validation.',        status: 'in-progress', dl: '2026-06-08', owner: adminId, assignee: registeredUserId },
-      { title: 'Create Postman collection',          desc: 'Export all API endpoints to a shareable Postman collection file.',        status: 'pending',     dl: '2026-06-19', owner: adminId, assignee: registeredUserId },
-      { title: 'Fix overdue date highlight bug',     desc: 'Overdue indicator not showing on tasks due today.',                       status: 'done',        dl: '2026-05-22', owner: adminId, assignee: registeredUserId },
-      { title: 'Add confirm dialog for delete',      desc: 'Show a confirmation modal before permanently deleting a task.',           status: 'done',        dl: '2026-05-20', owner: adminId, assignee: registeredUserId },
-      { title: 'Kanban board drag and drop',         desc: 'Allow users to drag task cards between status columns.',                  status: 'done',        dl: '2026-05-18', owner: adminId, assignee: registeredUserId },
-      { title: 'User acceptance testing round 1',    desc: 'Run UAT session with three internal testers and collect feedback.',       status: 'in-progress', dl: '2026-06-05', owner: adminId, assignee: registeredUserId },
-      { title: 'Deploy backend to Railway',          desc: 'Deploy Express API and MySQL to Railway for public demo access.',         status: 'pending',     dl: '2026-06-30', owner: adminId, assignee: registeredUserId },
+      // ── Done — assigned to lorem (7) ──
+      { title: 'Setup authentication middleware',      desc: 'Implement JWT middleware and protect all task routes with bearer token validation.',          status: 'done',        dl: '2026-05-10', owner: adminId, assignee: loremId },
+      { title: 'Complete README API documentation',    desc: 'Document all API endpoints, env variables, Docker setup, and local development steps.',      status: 'done',        dl: '2026-05-12', owner: adminId, assignee: loremId },
+      { title: 'Implement task pagination',            desc: 'Add page-based pagination to the task list endpoint with total count and page metadata.',     status: 'done',        dl: '2026-05-14', owner: adminId, assignee: loremId },
+      { title: 'Add title search feature',             desc: 'Allow users to search tasks by keyword using a partial match query on the title field.',      status: 'done',        dl: '2026-05-15', owner: adminId, assignee: loremId },
+      { title: 'Write unit tests for auth',            desc: 'Cover register and login endpoints with Jest and Supertest integration tests.',               status: 'done',        dl: '2026-05-16', owner: adminId, assignee: loremId },
+      { title: 'Fix overdue date highlight bug',       desc: 'Overdue indicator was not showing on tasks due today due to timezone offset issue.',          status: 'done',        dl: '2026-05-17', owner: adminId, assignee: loremId },
+      { title: 'Add confirm dialog for delete',        desc: 'Show a confirmation modal before permanently deleting a task to prevent accidental removal.', status: 'done',        dl: '2026-05-18', owner: adminId, assignee: loremId },
+      // ── Done — assigned to ipsum (7) ──
+      { title: 'Kanban board drag and drop',           desc: 'Allow users to drag task cards between status columns and persist the status change.',        status: 'done',        dl: '2026-05-19', owner: adminId, assignee: ipsumId },
+      { title: 'Implement role-based access control',  desc: 'Restrict task creation to admin role and scope task visibility by ownership and assignment.', status: 'done',        dl: '2026-05-20', owner: adminId, assignee: ipsumId },
+      { title: 'Add task attachment URL support',      desc: 'Allow attaching an external URL to a task and preview image attachments inside the modal.',   status: 'done',        dl: '2026-05-21', owner: adminId, assignee: ipsumId },
+      { title: 'Refactor API response format',         desc: 'Standardize all API responses to use { success, message, data } envelope structure.',         status: 'done',        dl: '2026-05-22', owner: adminId, assignee: ipsumId },
+      { title: 'Add comment section to task detail',   desc: 'Enable users to add, edit, and delete comments on individual tasks with timestamps.',         status: 'done',        dl: '2026-05-23', owner: adminId, assignee: ipsumId },
+      { title: 'Implement activity timeline',          desc: 'Log and display all task events (create, update, assign, status change) in a timeline view.',  status: 'done',        dl: '2026-05-24', owner: adminId, assignee: ipsumId },
+      { title: 'API rate limiting setup',              desc: 'Configure express-rate-limit to prevent brute-force attacks on auth and task endpoints.',      status: 'done',        dl: '2026-05-26', owner: adminId, assignee: ipsumId },
+      // ── In Progress — assigned to lorem (5) ──
+      { title: 'Improve frontend error message',       desc: 'Make frontend error messages clearer and provide actionable guidance for common failures.',    status: 'in-progress', dl: '2026-06-03', owner: adminId, assignee: loremId },
+      { title: 'Optimize database queries',            desc: 'Add composite indexes and rewrite N+1 queries in the task list and activity log endpoints.',   status: 'in-progress', dl: '2026-06-05', owner: adminId, assignee: loremId },
+      { title: 'Fix mobile responsive layout',         desc: 'Fix Kanban card grid breaking on screens below 375px and add horizontal scroll for columns.',  status: 'in-progress', dl: '2026-06-07', owner: adminId, assignee: loremId },
+      { title: 'Security audit and input sanitize',    desc: 'Review all endpoints for SQL injection, XSS, and missing validation rules.',                  status: 'in-progress', dl: '2026-06-08', owner: adminId, assignee: loremId },
+      { title: 'User acceptance testing round 1',      desc: 'Run UAT session with three internal testers and collect structured feedback on all features.', status: 'in-progress', dl: '2026-06-10', owner: adminId, assignee: loremId },
+      // ── In Progress — assigned to ipsum (5) ──
+      { title: 'Performance optimization frontend',    desc: 'Reduce initial bundle size using code splitting, lazy loading, and image optimization.',       status: 'in-progress', dl: '2026-06-12', owner: adminId, assignee: ipsumId },
+      { title: 'Database migration scripts',           desc: 'Write versioned migration scripts for schema changes and test rollback procedures.',           status: 'in-progress', dl: '2026-06-14', owner: adminId, assignee: ipsumId },
+      { title: 'Add advanced filter panel',            desc: 'Implement multi-criteria filter by status, deadline range, assignee, and keyword combined.',   status: 'in-progress', dl: '2026-06-16', owner: adminId, assignee: ipsumId },
+      { title: 'Fix timezone handling in deadlines',   desc: 'Deadline dates shifting by one day for users in UTC+8 timezone — investigate and patch.',      status: 'in-progress', dl: '2026-06-18', owner: adminId, assignee: ipsumId },
+      { title: 'Implement drag order persistence',     desc: 'Persist card sort_order after within-column drag so the order survives a page refresh.',       status: 'in-progress', dl: '2026-06-20', owner: adminId, assignee: ipsumId },
+      // ── Pending — assigned to lorem (6) ──
+      { title: 'Fix task filter by status',            desc: 'Ensure status filter works correctly for all three values: pending, in-progress, and done.',   status: 'pending',     dl: '2026-06-22', owner: adminId, assignee: loremId },
+      { title: 'Add loading skeleton to task list',    desc: 'Replace plain loading spinner with skeleton card components that match the real card layout.',  status: 'pending',     dl: '2026-06-23', owner: adminId, assignee: loremId },
+      { title: 'Review and merge open PRs',            desc: 'Review five open pull requests, leave feedback, and merge approved branches to main.',         status: 'pending',     dl: '2026-06-24', owner: adminId, assignee: loremId },
+      { title: 'Update npm dependencies',              desc: 'Run npm audit, update all outdated packages to latest minor versions, and test regressions.',   status: 'pending',     dl: '2026-06-25', owner: adminId, assignee: loremId },
+      { title: 'Setup CI/CD pipeline',                 desc: 'Configure GitHub Actions to run lint, tests, and Docker build on every push to main branch.',  status: 'pending',     dl: '2026-06-26', owner: adminId, assignee: loremId },
+      { title: 'Create Postman collection',            desc: 'Export all API endpoints to a shareable Postman collection with pre-filled example payloads.',  status: 'pending',     dl: '2026-06-27', owner: adminId, assignee: loremId },
+      // ── Pending — assigned to ipsum (5) ──
+      { title: 'Deploy backend to Railway',            desc: 'Deploy Express API and MySQL database to Railway and verify all endpoints on production URL.',  status: 'pending',     dl: '2026-06-28', owner: adminId, assignee: ipsumId },
+      { title: 'Add export to CSV feature',            desc: 'Allow admin to export the full task list to a downloadable CSV file with all metadata fields.', status: 'pending',     dl: '2026-06-29', owner: adminId, assignee: ipsumId },
+      { title: 'Write API integration tests',          desc: 'Cover all CRUD endpoints with Supertest integration tests using a test database.',             status: 'pending',     dl: '2026-06-30', owner: adminId, assignee: ipsumId },
+      { title: 'Setup logging and monitoring',         desc: 'Integrate Winston for structured logging and add a health check endpoint for uptime monitoring.',status: 'pending',     dl: '2026-07-02', owner: adminId, assignee: ipsumId },
+      { title: 'User acceptance testing round 2',      desc: 'Second UAT round incorporating fixes from round 1 feedback with five external testers.',       status: 'pending',     dl: '2026-07-05', owner: adminId, assignee: ipsumId },
     ];
 
     const taskIds = {};
@@ -152,7 +179,8 @@ async function seed() {
     console.log('Demo credentials (password: password123)');
     console.log('─────────────────────────────────────────────────────────────────');
     console.log('  admin@taskflow.test   → admin');
-    console.log('  user@taskflow.test    → user');
+    console.log('  lorem@taskflow.test   → user');
+    console.log('  ipsum@taskflow.test   → user');
     console.log('  (any registered account) → user  (default role)');
     console.log('─────────────────────────────────────────────────────────────────\n');
 
