@@ -1,16 +1,25 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/db');
 const { success, error } = require('../utils/response');
-const { getAccessibleTask } = require('../utils/taskAccess');
 const { logActivity } = require('../utils/activityHelper');
-const { notifyRelated } = require('../utils/notificationHelper');
+
+const canAccessTask = async (taskId, userId, role) => {
+  const [[task]] = await pool.execute(
+    'SELECT id, title, user_id, assigned_to_user_id FROM tasks WHERE id = ?',
+    [taskId]
+  );
+  if (!task) return null;
+  if (role === 'admin') return task;
+  if (task.user_id === userId || task.assigned_to_user_id === userId) return task;
+  return null;
+};
 
 const getComments = async (req, res, next) => {
   try {
     const { id: taskId } = req.params;
-    const { id: userId, role, division_id: divisionId } = req.user;
+    const { id: userId, role } = req.user;
 
-    const task = await getAccessibleTask(taskId, { userId, role, divisionId });
+    const task = await canAccessTask(taskId, userId, role);
     if (!task) return error(res, 404, 'Task not found or access denied');
 
     const [comments] = await pool.execute(
@@ -37,9 +46,9 @@ const addComment = async (req, res, next) => {
     }
 
     const { id: taskId } = req.params;
-    const { id: userId, role, division_id: divisionId } = req.user;
+    const { id: userId, role } = req.user;
 
-    const task = await getAccessibleTask(taskId, { userId, role, divisionId });
+    const task = await canAccessTask(taskId, userId, role);
     if (!task) return error(res, 404, 'Task not found or access denied');
 
     const { comment } = req.body;
@@ -57,14 +66,6 @@ const addComment = async (req, res, next) => {
 
     await logActivity({ taskId: Number(taskId), userId, action: 'comment_added' });
 
-    await notifyRelated({
-      task,
-      actorId: userId,
-      type: 'comment_added',
-      title: 'New comment on a task',
-      message: `New comment on "${task.title}" by ${newComment.user_name}.`,
-    });
-
     return success(res, 201, 'Comment added successfully', newComment);
   } catch (err) {
     next(err);
@@ -79,9 +80,9 @@ const updateComment = async (req, res, next) => {
     }
 
     const { id: taskId, commentId } = req.params;
-    const { id: userId, role, division_id: divisionId } = req.user;
+    const { id: userId, role } = req.user;
 
-    const task = await getAccessibleTask(taskId, { userId, role, divisionId });
+    const task = await canAccessTask(taskId, userId, role);
     if (!task) return error(res, 404, 'Task not found or access denied');
 
     const [[existing]] = await pool.execute(
@@ -109,9 +110,9 @@ const updateComment = async (req, res, next) => {
 const deleteComment = async (req, res, next) => {
   try {
     const { id: taskId, commentId } = req.params;
-    const { id: userId, role, division_id: divisionId } = req.user;
+    const { id: userId, role } = req.user;
 
-    const task = await getAccessibleTask(taskId, { userId, role, divisionId });
+    const task = await canAccessTask(taskId, userId, role);
     if (!task) return error(res, 404, 'Task not found or access denied');
 
     const [[existing]] = await pool.execute(

@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   assigned_to_user_id  INT           NULL,
   division_id          INT           NULL,
   attachment_url       TEXT          NULL,
+  sort_order           INT           NOT NULL DEFAULT 0,
   completed_at         TIMESTAMP     NULL,
   created_at           TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
   updated_at           TIMESTAMP     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

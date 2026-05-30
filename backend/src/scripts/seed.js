@@ -118,6 +118,8 @@ async function seed() {
       }
       taskIds[t.title] = taskId;
     }
+    // Initialize sort_order for any tasks that don't have one yet
+    await conn.execute('UPDATE tasks SET sort_order = id * 10 WHERE sort_order = 0');
     console.log('✓ Tasks');
 
     // ── 3. ACTIVITIES ──────────────────────────────────────────────────
@@ -134,7 +136,10 @@ async function seed() {
       };
 
       await addAct('task_created', null, null, null);
-      if (t.assignee) await addAct('task_assigned', 'assigned_to', null, String(t.assignee));
+      if (t.assignee) {
+        const [[assigneeUser]] = await conn.execute('SELECT name FROM users WHERE id = ?', [t.assignee]);
+        await addAct('task_assigned', 'assigned_to', null, assigneeUser?.name || String(t.assignee));
+      }
       if (t.status === 'in-progress') await addAct('status_changed', 'status', 'pending', 'in-progress');
       if (t.status === 'done') {
         await addAct('status_changed', 'status', 'pending', 'done');

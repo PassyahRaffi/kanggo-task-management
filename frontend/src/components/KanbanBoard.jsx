@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
@@ -35,8 +35,9 @@ const SortableCard = ({ task, onView, onEdit, onDelete }) => {
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
+    transition: isDragging ? 'none' : transition,
+    opacity: isDragging ? 0 : 1,
+    pointerEvents: isDragging ? 'none' : undefined,
   };
 
   const isOverdue = task.deadline && task.status !== 'done' && new Date(task.deadline) < new Date();
@@ -108,15 +109,18 @@ const DroppableColumn = ({ column, ids, tasks, onView, onEdit, onDelete }) => {
   );
 };
 
-const KanbanBoard = ({ tasks, onView, onEdit, onDelete, onStatusChange }) => {
-  // items: { pending: ['id1','id2'], 'in-progress': [...], done: [...] }
+const KanbanBoard = ({ tasks, onView, onEdit, onDelete, onStatusChange, onReorder }) => {
   const [items, setItems] = useState({});
   const [activeTask, setActiveTask] = useState(null);
+  const dragOriginCol = useRef(null);
 
   useEffect(() => {
     const map = {};
     COLUMNS.forEach((col) => {
-      map[col.id] = tasks.filter((t) => t.status === col.id).map((t) => String(t.id));
+      map[col.id] = tasks
+        .filter((t) => t.status === col.id)
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.id - b.id)
+        .map((t) => String(t.id));
     });
     setItems(map);
   }, [tasks]);
@@ -135,6 +139,7 @@ const KanbanBoard = ({ tasks, onView, onEdit, onDelete, onStatusChange }) => {
   const handleDragStart = ({ active }) => {
     const task = tasks.find((t) => String(t.id) === String(active.id));
     setActiveTask(task || null);
+    dragOriginCol.current = findContainer(active.id);
   };
 
   const handleDragOver = ({ active, over }) => {
@@ -163,26 +168,40 @@ const KanbanBoard = ({ tasks, onView, onEdit, onDelete, onStatusChange }) => {
   };
 
   const handleDragEnd = ({ active, over }) => {
-    const activeCol = findContainer(active.id);
-    const overCol   = over ? findContainer(over.id) : null;
-
-    if (activeCol && overCol && activeCol === overCol) {
-      // Within same column — reorder
-      const activeIdx = items[activeCol].indexOf(String(active.id));
-      const overIdx   = items[overCol].indexOf(String(over.id));
-      if (activeIdx !== overIdx) {
-        setItems((prev) => ({
-          ...prev,
-          [activeCol]: arrayMove(prev[activeCol], activeIdx, overIdx),
-        }));
-      }
-    } else if (activeCol && overCol && activeCol !== overCol) {
-      // Cross-column — status change
-      const task = tasks.find((t) => String(t.id) === String(active.id));
-      if (task && overCol !== task.status) onStatusChange(task.id, overCol);
-    }
-
+    const originCol = dragOriginCol.current;
+    dragOriginCol.current = null;
     setActiveTask(null);
+
+    if (!originCol || !over) return;
+
+    const overCol = findContainer(over.id);
+    if (!overCol) return;
+
+    if (originCol === overCol) {
+      // Within same column — reorder
+      const colIds    = items[originCol];
+      const activeIdx = colIds.indexOf(String(active.id));
+      const overIdx   = colIds.indexOf(String(over.id));
+      if (activeIdx !== -1 && overIdx !== -1 && activeIdx !== overIdx) {
+        const newOrder = arrayMove(colIds, activeIdx, overIdx);
+        setItems((prev) => ({ ...prev, [originCol]: newOrder }));
+
+        if (onReorder) {
+          // Redistribute the column's existing sort_orders to the new order
+          const colTasks = colIds
+            .map((id) => tasks.find((t) => String(t.id) === id))
+            .filter(Boolean);
+          const sortedOrders = colTasks
+            .map((t) => t.sort_order || 0)
+            .sort((a, b) => a - b);
+          onReorder(newOrder.map((id, idx) => ({ id: Number(id), sort_order: sortedOrders[idx] })));
+        }
+      }
+    } else {
+      // Cross-column — status change (card already moved visually by handleDragOver)
+      const task = tasks.find((t) => String(t.id) === String(active.id));
+      if (task) onStatusChange(task.id, overCol);
+    }
   };
 
   const getColTasks = (colId) =>

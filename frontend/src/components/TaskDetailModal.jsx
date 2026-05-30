@@ -92,6 +92,33 @@ const TaskDetailModal = ({ task, onClose, onEdit }) => (
             </div>
           )}
 
+          {task.deadline && task.completed_at && (() => {
+            const d1 = new Date(task.completed_at); d1.setHours(0,0,0,0);
+            const d2 = new Date(task.deadline);      d2.setHours(0,0,0,0);
+            const diff = Math.round((d2 - d1) / 86400000);
+            if (diff > 0) return (
+              <div className="flex items-center">
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200 px-3 py-1 rounded-full">
+                  ✓ Completed {diff} day{diff !== 1 ? 's' : ''} early
+                </span>
+              </div>
+            );
+            if (diff < 0) return (
+              <div className="flex items-center">
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-red-50 text-red-600 border border-red-200 px-3 py-1 rounded-full">
+                  ⚠ Completed {-diff} day{-diff !== 1 ? 's' : ''} late
+                </span>
+              </div>
+            );
+            return (
+              <div className="flex items-center">
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full">
+                  ✓ Completed on time
+                </span>
+              </div>
+            );
+          })()}
+
         </div>
 
         {/* Attachment */}

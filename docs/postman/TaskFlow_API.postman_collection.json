@@ -117,6 +117,39 @@
       "name": "Tasks",
       "item": [
         {
+          "name": "POST Create Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const res = pm.response.json();",
+                  "  if (res.success && res.data && res.data.id) {",
+                  "    pm.collectionVariables.set('task_id', res.data.id);",
+                  "    console.log('task_id saved:', res.data.id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/tasks", "host": ["{{base_url}}"], "path": ["api","tasks"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Test task from Postman\",\n  \"description\": \"This task was created from Postman collection.\",\n  \"status\": \"pending\",\n  \"deadline\": \"2026-12-31\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Create a new task. **Admin only.** `task_id` is automatically saved to collection variable after creation.\n\nOptional fields: `description`, `deadline`, `assigned_to_user_id`, `attachment_url`."
+          },
+          "response": []
+        },
+        {
           "name": "GET All Tasks",
           "request": {
             "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
@@ -127,7 +160,25 @@
           "response": []
         },
         {
-          "name": "GET Tasks — Filter by Status (pending)",
+          "name": "GET Tasks — Paginated",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/tasks?page=1&limit=9",
+              "host": ["{{base_url}}"],
+              "path": ["api","tasks"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "9" }
+              ]
+            },
+            "description": "Get paginated tasks. Response includes `pagination` object with `page`, `limit`, `total`, `totalPages`."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Tasks — Filter by Status",
           "request": {
             "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
             "method": "GET",
@@ -153,24 +204,6 @@
               "query": [{ "key": "search", "value": "authentication" }]
             },
             "description": "Search tasks by title keyword (partial match)."
-          },
-          "response": []
-        },
-        {
-          "name": "GET Tasks — Paginated",
-          "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/api/tasks?page=1&limit=9",
-              "host": ["{{base_url}}"],
-              "path": ["api","tasks"],
-              "query": [
-                { "key": "page",  "value": "1" },
-                { "key": "limit", "value": "9" }
-              ]
-            },
-            "description": "Get paginated tasks. Response includes `pagination` object with `page`, `limit`, `total`, `totalPages`."
           },
           "response": []
         },
@@ -205,39 +238,6 @@
           "response": []
         },
         {
-          "name": "POST Create Task",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "  const res = pm.response.json();",
-                  "  if (res.success && res.data && res.data.id) {",
-                  "    pm.collectionVariables.set('task_id', res.data.id);",
-                  "    console.log('task_id saved:', res.data.id);",
-                  "  }",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}/api/tasks", "host": ["{{base_url}}"], "path": ["api","tasks"] },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Test task from Postman\",\n  \"description\": \"This task was created from Postman collection.\",\n  \"status\": \"pending\",\n  \"deadline\": \"2026-12-31\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "description": "Create a new task. **Admin only.** `task_id` is automatically saved to collection variable after creation.\n\nOptional fields: `description`, `deadline`, `assigned_to_user_id`, `attachment_url`."
-          },
-          "response": []
-        },
-        {
           "name": "PUT Update Task",
           "request": {
             "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
@@ -250,6 +250,22 @@
               "options": { "raw": { "language": "json" } }
             },
             "description": "Update a task. Only send fields you want to change. Setting `status` to `done` automatically records `completed_at`."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Reorder Tasks",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/tasks/reorder", "host": ["{{base_url}}"], "path": ["api","tasks","reorder"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orders\": [\n    { \"id\": 1, \"sort_order\": 10 },\n    { \"id\": 3, \"sort_order\": 20 },\n    { \"id\": 7, \"sort_order\": 30 }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Persist the drag-and-drop order of tasks within a Kanban column. Accepts an array of `{id, sort_order}` objects. Tasks are fetched in ascending `sort_order` order."
           },
           "response": []
         },

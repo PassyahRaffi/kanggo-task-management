@@ -13,7 +13,9 @@ const buildVisibilityClause = (role, userId) => {
 };
 
 const TASK_SELECT = `
-  SELECT t.*,
+  SELECT t.id, t.title, t.description, t.status, t.deadline,
+    t.user_id, t.assigned_to_user_id, t.division_id, t.attachment_url,
+    t.sort_order, t.completed_at, t.created_at, t.updated_at,
     u.name  AS creator_name,
     au.name AS assignee_name
   FROM tasks t
@@ -62,7 +64,7 @@ const getTasks = async (req, res, next) => {
       );
 
       const [tasks] = await pool.execute(
-        TASK_SELECT + where + ` ORDER BY t.created_at DESC LIMIT ${limitNum} OFFSET ${offset}`,
+        TASK_SELECT + where + ` ORDER BY t.sort_order ASC, t.id ASC LIMIT ${limitNum} OFFSET ${offset}`,
         params
       );
 
@@ -73,7 +75,7 @@ const getTasks = async (req, res, next) => {
     }
 
     // Flat array — used by board view
-    const [tasks] = await pool.execute(TASK_SELECT + where + ' ORDER BY t.created_at DESC', params);
+    const [tasks] = await pool.execute(TASK_SELECT + where + ' ORDER BY t.sort_order ASC, t.id ASC', params);
     return success(res, 200, 'Tasks retrieved successfully', tasks.map(enrichTask));
   } catch (err) {
     next(err);
@@ -95,14 +97,15 @@ const createTask = async (req, res, next) => {
     }
     const { title, description, status = 'pending', deadline, assigned_to_user_id, attachment_url } = req.body;
 
-    // Auto-assign division from creator's profile
-    const taskDivisionId = divisionId || null;
+    const [[{ nextOrder }]] = await pool.execute(
+      'SELECT COALESCE(MAX(sort_order), 0) + 10 AS nextOrder FROM tasks'
+    );
 
     const [result] = await pool.execute(
-      `INSERT INTO tasks (title, description, status, deadline, user_id, division_id, assigned_to_user_id, attachment_url)
+      `INSERT INTO tasks (title, description, status, deadline, user_id, assigned_to_user_id, attachment_url, sort_order)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [title.trim(), description || null, status, deadline || null, userId, taskDivisionId,
-       assigned_to_user_id || null, attachment_url || null]
+      [title.trim(), description || null, status, deadline || null, userId,
+       assigned_to_user_id || null, attachment_url || null, nextOrder]
     );
 
     const [[task]] = await pool.execute(TASK_SELECT + ' WHERE t.id = ?', [result.insertId]);
@@ -184,11 +187,6 @@ const updateTask = async (req, res, next) => {
     if (assigned_to_user_id !== undefined && assigned_to_user_id !== current.assigned_to_user_id) {
       await logActivity({ taskId: Number(id), userId, action: 'task_assigned',
         fieldName: 'assigned_to', oldValue: current.assignee_name, newValue: updated.assignee_name });
-      if (assigned_to_user_id && assigned_to_user_id !== userId) {
-        await notifyRelated({ task: updated, actorId: userId, type: 'task_assigned',
-          title: 'You have been assigned to a task',
-          message: `You have been assigned to "${updated.title}".` });
-      }
     }
 
     if (title !== undefined || description !== undefined || deadline !== undefined || attachment_url !== undefined) {
@@ -226,4 +224,22 @@ const deleteTask = async (req, res, next) => {
   }
 };
 
-module.exports = { getTasks, createTask, updateTask, deleteTask };
+// ── PATCH /api/tasks/reorder ──────────────────────────────────────
+const reorderTasks = async (req, res, next) => {
+  try {
+    const { orders } = req.body;
+    if (!Array.isArray(orders) || orders.length === 0) {
+      return error(res, 400, 'orders array required');
+    }
+    await Promise.all(
+      orders.map(({ id, sort_order }) =>
+        pool.execute('UPDATE tasks SET sort_order = ? WHERE id = ?', [sort_order, id])
+      )
+    );
+    return success(res, 200, 'Tasks reordered');
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getTasks, createTask, updateTask, deleteTask, reorderTasks };

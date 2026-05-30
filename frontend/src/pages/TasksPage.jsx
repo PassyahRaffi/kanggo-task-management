@@ -6,7 +6,7 @@ import TaskModal from '../components/TaskModal';
 import TaskDetailModal from '../components/TaskDetailModal';
 import ConfirmModal from '../components/ConfirmModal';
 import KanbanBoard from '../components/KanbanBoard';
-import { getTasks, createTask, updateTask, deleteTask } from '../api/tasks';
+import { getTasks, createTask, updateTask, deleteTask, reorderTasks } from '../api/tasks';
 import { useAuth } from '../context/AuthContext';
 import { COPY } from '../constants/copy';
 
@@ -131,11 +131,20 @@ const TasksPage = () => {
     } finally { setDeleteLoading(false); }
   };
 
+  const handleReorder = async (orders) => {
+    setTasks((prev) => {
+      const orderMap = Object.fromEntries(orders.map((o) => [o.id, o.sort_order]));
+      return prev.map((t) => orderMap[t.id] !== undefined ? { ...t, sort_order: orderMap[t.id] } : t);
+    });
+    try { await reorderTasks(orders); } catch { /* silent — order resets on next fetch */ }
+  };
+
   const handleStatusChange = async (taskId, newStatus) => {
     const prev = tasks.find((t) => t.id === taskId);
     setTasks((ts) => ts.map((t) => t.id === taskId ? { ...t, status: newStatus } : t));
     try {
-      await updateTask(taskId, { status: newStatus }); fetchTasks();
+      await updateTask(taskId, { status: newStatus });
+      await fetchTasks();
     } catch (err) {
       setTasks((ts) => ts.map((t) => t.id === taskId ? prev : t));
       showToast(err.response?.data?.message || 'Failed to update task status.');
@@ -232,7 +241,7 @@ const TasksPage = () => {
           <div className="text-center py-16 text-gray-400 text-sm">{COPY.tasks.noTasks}</div>
         ) : (
           <>
-            <KanbanBoard tasks={tasks} onView={openView} onEdit={openEdit} onDelete={openDelete} onStatusChange={handleStatusChange} />
+            <KanbanBoard tasks={tasks} onView={openView} onEdit={openEdit} onDelete={openDelete} onStatusChange={handleStatusChange} onReorder={handleReorder} />
 
             {/* Pagination */}
             {pagination && pagination.totalPages > 1 && (

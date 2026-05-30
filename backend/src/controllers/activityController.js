@@ -1,14 +1,19 @@
 const pool = require('../config/db');
 const { success, error } = require('../utils/response');
-const { getAccessibleTask } = require('../utils/taskAccess');
 
 const getActivities = async (req, res, next) => {
   try {
     const { id: taskId } = req.params;
-    const { id: userId, role, division_id: divisionId } = req.user;
+    const { id: userId, role } = req.user;
 
-    const task = await getAccessibleTask(taskId, { userId, role, divisionId });
-    if (!task) return error(res, 404, 'Task not found or access denied');
+    const [[task]] = await pool.execute(
+      'SELECT id, user_id, assigned_to_user_id FROM tasks WHERE id = ?',
+      [taskId]
+    );
+    if (!task) return error(res, 404, 'Task not found');
+    if (role !== 'admin' && task.user_id !== userId && task.assigned_to_user_id !== userId) {
+      return error(res, 403, 'Access denied');
+    }
 
     const [activities] = await pool.execute(
       `SELECT a.id, a.action, a.field_name, a.old_value, a.new_value, a.created_at,
