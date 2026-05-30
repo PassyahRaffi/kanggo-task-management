@@ -529,11 +529,11 @@ Tests use Jest + Supertest with a mocked database — no real MySQL needed.
 
 | Page | Screenshot |
 |---|---|
-| Login | _(add screenshot)_ |
-| Register | _(add screenshot)_ |
-| Kanban Board | _(add screenshot)_ |
-| Task Detail (with comments + timeline) | _(add screenshot)_ |
-| Profile Page | _(add screenshot)_ |
+| Login | ![Login](./docs/screenshots/login.png) |
+| Register | ![Register](./docs/screenshots/register.png) |
+| Kanban Board | ![Kanban Board](./docs/screenshots/kanban.png) |
+| Task Detail | ![Task Detail](./docs/screenshots/task-detail.png) |
+| Profile Page | ![Profile](./docs/screenshots/profile.png) |
 
 ---
 
