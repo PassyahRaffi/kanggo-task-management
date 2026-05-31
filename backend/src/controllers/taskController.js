@@ -98,7 +98,7 @@ const createTask = async (req, res, next) => {
     const { title, description, status = 'pending', deadline, assigned_to_user_id, attachment_url } = req.body;
 
     const [[{ nextOrder }]] = await pool.execute(
-      'SELECT COALESCE(MAX(sort_order), 0) + 10 AS nextOrder FROM tasks'
+      'SELECT COALESCE(MIN(sort_order), 10) - 10 AS nextOrder FROM tasks'
     );
 
     const [result] = await pool.execute(

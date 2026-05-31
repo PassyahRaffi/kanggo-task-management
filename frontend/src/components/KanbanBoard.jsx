@@ -43,6 +43,25 @@ const SortableCard = ({ task, onView, onEdit, onDelete }) => {
 
   const isOverdue = task.deadline && task.status !== 'done' && new Date(task.deadline) < new Date();
 
+  const timelineBadge = (() => {
+    if (!task.deadline) return null;
+    if (task.status === 'done' && task.completed_at) {
+      const d1 = new Date(task.completed_at); d1.setHours(0,0,0,0);
+      const d2 = new Date(task.deadline);      d2.setHours(0,0,0,0);
+      const diff = Math.round((d2 - d1) / 86400000);
+      if (diff > 0) return <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">✓ {diff}d early</span>;
+      if (diff < 0) return <span className="text-xs font-medium text-red-500 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full">⚠ {-diff}d late</span>;
+      return <span className="text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-full">✓ On time</span>;
+    }
+    if (isOverdue) return null; // already shown inline in due date
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dl    = new Date(task.deadline); dl.setHours(0,0,0,0);
+    const days  = Math.round((dl - today) / 86400000);
+    if (days === 0) return <span className="text-xs font-medium text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-full">Due today</span>;
+    if (days <= 3)  return <span className="text-xs font-medium text-orange-400 bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded-full">{days}d left</span>;
+    return null;
+  })();
+
   return (
     <div ref={setNodeRef} style={style}
       className={`border rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing select-none ${CARD_STYLES[task.status] || 'bg-white border-gray-200'}`}
@@ -61,6 +80,7 @@ const SortableCard = ({ task, onView, onEdit, onDelete }) => {
             {isOverdue ? '⚠ Overdue: ' : 'Due: '}{fmt(task.deadline)}
           </p>
         )}
+        {timelineBadge && <div className="pt-0.5">{timelineBadge}</div>}
       </div>
       <div className="flex gap-1.5 mt-2.5 pt-2 border-t border-gray-200"
         onPointerDown={(e) => e.stopPropagation()}>
@@ -182,9 +202,34 @@ const KanbanBoard = ({ tasks, onView, onEdit, onDelete, onStatusChange, onReorde
     if (!originCol) return;
 
     if (destCol && destCol !== originCol) {
-      // Cross-column drop — use our tracked destination, ignore over entirely
       const task = tasks.find((t) => String(t.id) === String(active.id));
-      if (task) onStatusChange(task.id, destCol);
+      if (task) {
+        const destIds  = items[destCol] || [];
+        const movedIdx = destIds.indexOf(String(task.id));
+
+        // Sort-orders of the pre-existing dest column tasks (sorted ascending = visual order)
+        const existingOrders = tasks
+          .filter((t) => t.status === destCol)
+          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+          .map((t) => t.sort_order || 0);
+
+        let newSortOrder;
+        if (existingOrders.length === 0) {
+          newSortOrder = 100;
+        } else if (movedIdx <= 0) {
+          newSortOrder = existingOrders[0] - 10;
+        } else if (movedIdx >= destIds.length - 1) {
+          newSortOrder = existingOrders[existingOrders.length - 1] + 10;
+        } else {
+          // Between existingOrders[movedIdx-1] and existingOrders[movedIdx]
+          const lo = existingOrders[movedIdx - 1];
+          const hi = existingOrders[movedIdx];
+          newSortOrder = Math.floor((lo + hi) / 2);
+          if (newSortOrder === lo) newSortOrder = lo + 1;
+        }
+
+        onStatusChange(task.id, destCol, newSortOrder);
+      }
     } else if (!destCol && over) {
       // Same-column — reorder
       const overCol = findContainer(over.id);

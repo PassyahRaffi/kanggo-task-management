@@ -111,9 +111,20 @@ const TasksPage = () => {
   const handleSaveTask = async (formData) => {
     setTaskSaving(true); setTaskSaveError('');
     try {
-      if (editingTask) { await updateTask(editingTask.id, formData); showToast(COPY.success.taskUpdated); }
-      else             { await createTask(formData);                  showToast(COPY.success.taskCreated); }
-      setShowTaskModal(false); fetchTasks();
+      if (editingTask) {
+        await updateTask(editingTask.id, formData);
+        showToast(COPY.success.taskUpdated);
+        setShowTaskModal(false);
+        fetchTasks();
+      } else {
+        await createTask(formData);
+        showToast(COPY.success.taskCreated);
+        setShowTaskModal(false);
+        setFilter(''); setDeadlineFilter(''); setAssignedFilter('');
+        setSearchInput(''); setActiveSearch('');
+        setCurrentPage(1);
+        fetchTasks();
+      }
     } catch (err) {
       setTaskSaveError(err.response?.data?.message || COPY.errors.taskSaveFailed);
     } finally { setTaskSaving(false); }
@@ -139,11 +150,14 @@ const TasksPage = () => {
     try { await reorderTasks(orders); } catch { /* silent — order resets on next fetch */ }
   };
 
-  const handleStatusChange = async (taskId, newStatus) => {
+  const handleStatusChange = async (taskId, newStatus, newSortOrder = null) => {
     const prev = tasks.find((t) => t.id === taskId);
     setTasks((ts) => ts.map((t) => t.id === taskId ? { ...t, status: newStatus } : t));
     try {
       await updateTask(taskId, { status: newStatus });
+      if (newSortOrder !== null) {
+        await reorderTasks([{ id: taskId, sort_order: newSortOrder }]);
+      }
       await fetchTasks();
     } catch (err) {
       setTasks((ts) => ts.map((t) => t.id === taskId ? prev : t));
