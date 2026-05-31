@@ -539,7 +539,7 @@ Tests use Jest + Supertest with a mocked database — no real MySQL needed.
 
 ## Video Demo
 
-> [Video demo link — add after recording]
+> [https://youtu.be/Hn7CdlaAjds]
 
 Duration: ≤ 15 minutes  
 Covers: Register → Login → Create task → Assign → Kanban drag → Filter → Search → Comments → Profile → Logout

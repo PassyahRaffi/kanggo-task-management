@@ -113,17 +113,17 @@ const TasksPage = () => {
     try {
       if (editingTask) {
         await updateTask(editingTask.id, formData);
-        showToast(COPY.success.taskUpdated);
         setShowTaskModal(false);
-        fetchTasks();
+        showToast(COPY.success.taskUpdated);
+        await fetchTasks();
       } else {
         await createTask(formData);
-        showToast(COPY.success.taskCreated);
         setShowTaskModal(false);
         setFilter(''); setDeadlineFilter(''); setAssignedFilter('');
         setSearchInput(''); setActiveSearch('');
         setCurrentPage(1);
-        fetchTasks();
+        showToast(COPY.success.taskCreated);
+        await fetchTasks();
       }
     } catch (err) {
       setTaskSaveError(err.response?.data?.message || COPY.errors.taskSaveFailed);
@@ -131,13 +131,19 @@ const TasksPage = () => {
   };
 
   const handleDeleteConfirm = async () => {
+    const target = deletingTask;
     setDeleteLoading(true);
+    // Optimistic removal — task disappears immediately from UI
+    setTasks((ts) => ts.filter((t) => t.id !== target.id));
+    setShowDeleteModal(false);
+    setDeletingTask(null);
     try {
-      await deleteTask(deletingTask.id);
+      await deleteTask(target.id);
       showToast(COPY.success.taskDeleted);
-      setShowDeleteModal(false); setDeletingTask(null); fetchTasks();
+      await fetchTasks();
     } catch (err) {
-      setShowDeleteModal(false);
+      // Revert on failure
+      setTasks((ts) => [...ts, target].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
       showToast(err.response?.data?.message || COPY.errors.taskDeleteFailed);
     } finally { setDeleteLoading(false); }
   };

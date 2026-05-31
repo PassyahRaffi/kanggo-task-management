@@ -207,7 +207,7 @@ const deleteTask = async (req, res, next) => {
 
     const { clause, params: vParams } = buildVisibilityClause(role, userId);
     const [[existing]] = await pool.execute(
-      `SELECT id, user_id, assigned_to_user_id FROM tasks WHERE id = ?${clause.replace('t.', '')}`,
+      `SELECT id, user_id, assigned_to_user_id FROM tasks WHERE id = ?${clause.replaceAll('t.', '')}`,
       [id, ...vParams]
     );
     if (!existing) return error(res, 404, 'Task not found');
