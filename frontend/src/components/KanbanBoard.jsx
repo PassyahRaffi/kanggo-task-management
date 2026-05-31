@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors,
+  DndContext, DragOverlay, pointerWithin, rectIntersection,
+  PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
 import {
   SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
@@ -84,7 +85,7 @@ const DroppableColumn = ({ column, ids, tasks, onView, onEdit, onDelete }) => {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
   return (
-    <div className="flex flex-col min-w-0">
+    <div ref={setNodeRef} className="flex flex-col min-w-0">
       <div className={`flex items-center gap-2 px-3 py-2.5 rounded-t-xl border-b-2 ${column.headerCls}`}>
         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${column.dot}`} />
         <span className="text-sm font-semibold text-gray-700">{column.label}</span>
@@ -92,8 +93,7 @@ const DroppableColumn = ({ column, ids, tasks, onView, onEdit, onDelete }) => {
           {tasks.length}
         </span>
       </div>
-      <div ref={setNodeRef}
-        className={`flex-1 min-h-[200px] p-2 rounded-b-xl border border-t-0 border-gray-200 space-y-2 transition-colors ${isOver ? 'bg-indigo-50/60' : 'bg-gray-50'}`}>
+      <div className={`flex-1 min-h-[200px] p-2 rounded-b-xl border border-t-0 border-gray-200 space-y-2 transition-colors ${isOver ? 'bg-indigo-50/60' : 'bg-gray-50'}`}>
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>
           {tasks.map((task) => (
             <SortableCard key={task.id} task={task} onView={onView} onEdit={onEdit} onDelete={onDelete} />
@@ -113,6 +113,7 @@ const KanbanBoard = ({ tasks, onView, onEdit, onDelete, onStatusChange, onReorde
   const [items, setItems] = useState({});
   const [activeTask, setActiveTask] = useState(null);
   const dragOriginCol = useRef(null);
+  const dragDestCol   = useRef(null); // tracks cross-column destination synchronously
 
   useEffect(() => {
     const map = {};
@@ -129,7 +130,7 @@ const KanbanBoard = ({ tasks, onView, onEdit, onDelete, onStatusChange, onReorde
 
   const findContainer = (id) => {
     const sid = String(id);
-    if (items[sid]) return sid; // id is a column id
+    if (sid in items) return sid; // column id — works even when column is empty
     for (const [col, ids] of Object.entries(items)) {
       if (ids.includes(sid)) return col;
     }
@@ -140,6 +141,7 @@ const KanbanBoard = ({ tasks, onView, onEdit, onDelete, onStatusChange, onReorde
     const task = tasks.find((t) => String(t.id) === String(active.id));
     setActiveTask(task || null);
     dragOriginCol.current = findContainer(active.id);
+    dragDestCol.current   = null;
   };
 
   const handleDragOver = ({ active, over }) => {
@@ -147,6 +149,9 @@ const KanbanBoard = ({ tasks, onView, onEdit, onDelete, onStatusChange, onReorde
     const activeCol = findContainer(active.id);
     const overCol   = findContainer(over.id);
     if (!activeCol || !overCol || activeCol === overCol) return;
+
+    // Track destination synchronously — don't rely on over in handleDragEnd
+    dragDestCol.current = overCol;
 
     setItems((prev) => {
       const activeIds = prev[activeCol];
@@ -169,16 +174,21 @@ const KanbanBoard = ({ tasks, onView, onEdit, onDelete, onStatusChange, onReorde
 
   const handleDragEnd = ({ active, over }) => {
     const originCol = dragOriginCol.current;
+    const destCol   = dragDestCol.current; // reliable: set by handleDragOver, not by dnd-kit collision
     dragOriginCol.current = null;
+    dragDestCol.current   = null;
     setActiveTask(null);
 
-    if (!originCol || !over) return;
+    if (!originCol) return;
 
-    const overCol = findContainer(over.id);
-    if (!overCol) return;
-
-    if (originCol === overCol) {
-      // Within same column — reorder
+    if (destCol && destCol !== originCol) {
+      // Cross-column drop — use our tracked destination, ignore over entirely
+      const task = tasks.find((t) => String(t.id) === String(active.id));
+      if (task) onStatusChange(task.id, destCol);
+    } else if (!destCol && over) {
+      // Same-column — reorder
+      const overCol = findContainer(over.id);
+      if (!overCol || overCol !== originCol) return;
       const colIds    = items[originCol];
       const activeIdx = colIds.indexOf(String(active.id));
       const overIdx   = colIds.indexOf(String(over.id));
@@ -187,7 +197,6 @@ const KanbanBoard = ({ tasks, onView, onEdit, onDelete, onStatusChange, onReorde
         setItems((prev) => ({ ...prev, [originCol]: newOrder }));
 
         if (onReorder) {
-          // Redistribute the column's existing sort_orders to the new order
           const colTasks = colIds
             .map((id) => tasks.find((t) => String(t.id) === id))
             .filter(Boolean);
@@ -197,10 +206,6 @@ const KanbanBoard = ({ tasks, onView, onEdit, onDelete, onStatusChange, onReorde
           onReorder(newOrder.map((id, idx) => ({ id: Number(id), sort_order: sortedOrders[idx] })));
         }
       }
-    } else {
-      // Cross-column — status change (card already moved visually by handleDragOver)
-      const task = tasks.find((t) => String(t.id) === String(active.id));
-      if (task) onStatusChange(task.id, overCol);
     }
   };
 
@@ -208,7 +213,11 @@ const KanbanBoard = ({ tasks, onView, onEdit, onDelete, onStatusChange, onReorde
     (items[colId] || []).map((id) => tasks.find((t) => String(t.id) === id)).filter(Boolean);
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCorners}
+    <DndContext sensors={sensors}
+      collisionDetection={(args) => {
+        const hits = pointerWithin(args);
+        return hits.length > 0 ? hits : rectIntersection(args);
+      }}
       onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {COLUMNS.map((col) => (

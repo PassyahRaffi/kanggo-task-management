@@ -33,7 +33,7 @@ const ActivityTimeline = ({ taskId }) => {
 
   useEffect(() => {
     getActivities(taskId)
-      .then(({ data }) => setActivities(data.data))
+      .then(({ data }) => setActivities([...(data.data || [])].reverse()))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [taskId]);

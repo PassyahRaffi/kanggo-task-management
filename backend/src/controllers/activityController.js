@@ -21,7 +21,7 @@ const getActivities = async (req, res, next) => {
        FROM task_activities a
        JOIN users u ON u.id = a.user_id
        WHERE a.task_id = ?
-       ORDER BY a.created_at ASC`,
+       ORDER BY a.created_at DESC`,
       [taskId]
     );
 
