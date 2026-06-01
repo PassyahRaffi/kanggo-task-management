@@ -42,31 +42,129 @@ A full-stack Task Management System built as a technical test for PT Tenaga Kang
 
 ## Quick Start
 
-> **Prerequisites:** Node.js 18+, Docker Desktop
+Follow these steps from a fresh clone to a running application.
+
+### 1. Prerequisites
+
+| Tool | Version | Notes |
+|---|---|---|
+| [Node.js](https://nodejs.org) | 18 or newer | Required to run frontend and seed script |
+| [Docker Desktop](https://www.docker.com/products/docker-desktop) | Latest | Runs MySQL + backend in containers |
+| [Git](https://git-scm.com) | Any | To clone the repository |
+
+> **Important:** Open and fully start **Docker Desktop** before running any command below. If Docker is not running, the project will fail to start.
+
+---
+
+### 2. Clone Repository
 
 ```bash
-# 1. Install all dependencies (root + backend + frontend)
+git clone https://github.com/PassyahRaffi/kanggo-task-management.git
+cd kanggo-task-management
+```
+
+---
+
+### 3. Install Dependencies
+
+```bash
 npm run install:all
+```
 
-# 2. Copy and configure environment
+This installs packages for the root, backend, and frontend in one command.
+
+---
+
+### 4. Create Environment File
+
+```bash
 cp .env.example .env
-# Edit .env — change JWT_SECRET to a random string
+```
 
-# 3. Run everything with one command
+Open `.env` and update `JWT_SECRET` with any random string:
+
+```env
+JWT_SECRET=my_super_secret_random_string_123456789
+```
+
+The other values are pre-configured for local Docker and work out of the box.
+
+---
+
+### 5. Run the Project
+
+```bash
 npm run dev
 ```
 
-`npm run dev` starts:
-- **MySQL 8** via Docker Compose
-- **Express backend** on port 5000 via Docker Compose
-- **Vite frontend** on port 5173 locally
+This single command starts all three services:
 
-Open **http://localhost:5173**
+| Service | URL |
+|---|---|
+| React frontend (Vite) | http://localhost:5173 |
+| Express backend | http://localhost:5000 |
+| MySQL 8 (Docker) | localhost:3306 |
 
-> Docker containers keep running after Ctrl+C (only frontend stops).  
-> Stop Docker: `npm run docker:down`
+Wait ~15 seconds for Docker services to fully initialize, then open **http://localhost:5173** in your browser.
 
 ---
+
+### 6. Add Demo Data
+
+In a **new terminal** (keep the first one running):
+
+```bash
+npm run seed
+```
+
+This creates demo users and 35 demo tasks. Demo accounts:
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@taskflow.test` | `password123` |
+| User | `lorem@taskflow.test` | `password123` |
+| User | `ipsum@taskflow.test` | `password123` |
+
+---
+
+### 7. Verify Backend is Running
+
+```bash
+curl http://localhost:5000/api/health
+```
+
+Expected response:
+
+```json
+{ "success": true, "message": "API is running" }
+```
+
+---
+
+### 8. Stop the Project
+
+Press `Ctrl + C` in the terminal running `npm run dev` to stop the frontend.
+
+Docker containers (MySQL + backend) may still run in the background. Stop them with:
+
+```bash
+npm run docker:down
+```
+
+---
+
+### 9. Reset All Data
+
+To wipe the database and start fresh:
+
+```bash
+docker compose down -v
+npm run dev
+npm run seed
+```
+
+---
+
 
 ## Available Scripts
 
@@ -543,6 +641,84 @@ Tests use Jest + Supertest with a mocked database — no real MySQL needed.
 
 Duration: ≤ 15 minutes  
 Covers: Register → Login → Create task → Assign → Kanban drag → Filter → Search → Comments → Profile → Logout
+
+---
+
+## Troubleshooting
+
+### Docker is not running
+
+**Symptom:** Error like `Cannot connect to the Docker daemon` or `connection refused`.
+
+**Fix:** Open Docker Desktop, wait until the whale icon in the system tray shows "Docker Desktop is running", then retry:
+
+```bash
+npm run dev
+```
+
+---
+
+### Port already in use
+
+The project uses these ports:
+
+| Service | Port |
+|---|---|
+| Frontend (Vite) | 5173 |
+| Backend (Express) | 5000 |
+| MySQL | 3306 |
+
+**Fix:** Stop any other application using those ports, then re-run `npm run dev`.
+
+---
+
+### Frontend cannot connect to backend
+
+Check the backend is reachable:
+
+```bash
+curl http://localhost:5000/api/health
+```
+
+If it fails, run `npm run docker:logs` to see backend errors.
+
+Check the frontend environment file `frontend/.env` contains:
+
+```env
+VITE_API_URL=http://localhost:5000/api
+```
+
+---
+
+### Need to see Docker logs
+
+```bash
+npm run docker:logs
+```
+
+---
+
+### Seed failed
+
+Make sure Docker is running and backend has fully started (wait ~15 seconds after `npm run dev`), then run:
+
+```bash
+npm run seed
+```
+
+If the error is `ECONNREFUSED`, the MySQL container is not ready yet — wait a few more seconds and try again.
+
+---
+
+### Clean reset
+
+Wipe all containers, volumes, and data, then start fresh:
+
+```bash
+docker compose down -v
+npm run dev
+npm run seed
+```
 
 ---
 
